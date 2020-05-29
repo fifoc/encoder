@@ -80,6 +80,18 @@ jobs:
         release_name: Release for commit ${{ github.sha }}
         draft: false
         prerelease: false
+    - name: Download Artifact for Windows (1/3)
+      uses: actions/download-artifact@v1
+      with:
+        name: encoder-windows.exe
+    - name: Download Artifact for Linux (2/3)
+      uses: actions/download-artifact@v1
+      with:
+        name: encoder-linux
+    - name: Download Artifact for OSX (3/3)
+      uses: actions/download-artifact@v1
+      with:
+        name: encoder-osx   
     - name: Upload Release Asset for Windows
       id: upload-release-asset-w
       uses: actions/upload-release-asset@v1
