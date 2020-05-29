@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"image"
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
 	"os"
-	"time"
+	"os/exec"
 )
 
 func splitColor(color uint32) (uint32, uint32, uint32) {
@@ -26,9 +25,9 @@ func colorDelta(c uint32, d uint32) int64 {
 	return delta
 }
 
-var palette        []      uint32
-var lumaCache   map[uint32]uint64 = make(map[uint32]uint64)
-var paletteSet  map[uint32]bool
+var palette []uint32
+var lumaCache map[uint32]uint64 = make(map[uint32]uint64)
+var paletteSet map[uint32]bool
 
 func CalculateColorLuma(col uint32) uint64 {
 	rr, gg, bb := splitColor(col)
@@ -51,27 +50,26 @@ func CalculateColorLuma(col uint32) uint64 {
 var FIF_altMode = true
 
 func main() {
-	fmt.Println("Reading image...")
-	in, err := os.Open(os.Args[1])
-	if err != nil {
-		fmt.Println("An error has occured when reading the image.", err)
-		panic("Program cannot continue.")
-	}
-	defer in.Close()
+	/*	fmt.Println("Reading image...")
+		in, err := os.Open(os.Args[1])
+		if err != nil {
+			fmt.Println("An error has occured when reading the image.", err)
+			panic("Program cannot continue.")
+		}
+		defer in.Close()
 
-	src, _, _ := image.Decode(in)
-	bounds := src.Bounds()
-	w := bounds.Size().X
-	h := bounds.Size().Y
-	if w > 320 || h > 200 {
-		fmt.Println("Image too sizeable.")
-		panic("Program cannot continue")
-	}
+		src, _, _ := image.Decode(in)
+		bounds := src.Bounds()
+		w := bounds.Size().X
+		h := bounds.Size().Y
+		if w > 320 || h > 200 {
+			fmt.Println("Image too sizeable.")
+			panic("Program cannot continue")
+		}
 
-	if w % 2 != 0 || h % 4 != 0 {
-		panic("w must be a multiple of 2 and h must be a multiple of 4")
-	}
-
+		if w % 2 != 0 || h % 4 != 0 {
+			panic("w must be a multiple of 2 and h must be a multiple of 4")
+		}*/
 
 	fmt.Println("Generating OC palette...")
 	palette, _ = generatePalette()
@@ -81,10 +79,17 @@ func main() {
 		lumaCache[palette[i]] = CalculateColorLuma(palette[i])
 	}
 
-	a := time.Now()
-	data := encodeFif(w, h, src)
-	fmt.Println(time.Since(a))
-	fd, _ := os.Create(os.Args[2])
-	fd.Write(data)
-	fd.Close()
+	fmt.Println("Downsampling video...")
+	os.RemoveAll("tmp/")
+	os.MkdirAll("./tmp/", 0755)
+	cmd := exec.Command("ffmpeg", "-i", os.Args[1], "-vf", "fps=10,scale=320:200", "tmp/out%d.png")
+	cmd.Run()
+
+	/*
+		a := time.Now()
+		data := encodeFif(w, h, src)
+		fmt.Println(time.Since(a))
+		fd, _ := os.Create(os.Args[2])
+		fd.Write(data)
+		fd.Close()*/
 }
