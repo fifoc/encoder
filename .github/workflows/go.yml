@@ -84,14 +84,17 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: encoder-windows.exe
+        path: encoder-windows  
     - name: Download Artifact for Linux (2/3)
       uses: actions/download-artifact@v1
       with:
         name: encoder-linux
+        path: encoder-linux 
     - name: Download Artifact for OSX (3/3)
       uses: actions/download-artifact@v1
       with:
         name: encoder-osx   
+        path: encoder-osx 
     - name: Upload Release Asset for Windows
       id: upload-release-asset-w
       uses: actions/upload-release-asset@v1
