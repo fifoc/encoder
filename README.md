@@ -6,3 +6,6 @@ A reference encoder for the Fast Image Format
 
 # Usage
 `./fifEncoder source.png target.fif`
+
+# Questions/Problems?
+Contact me on discord at Rph#9999
