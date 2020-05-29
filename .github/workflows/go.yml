@@ -102,7 +102,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./encoder-windows.exe
+        asset_path: ./encoder/encoder-windows.exe
         asset_name: encoder-windows.exe
         asset_content_type: application/octet-stream
     - name: Upload Release Asset for Linux
@@ -112,7 +112,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./encoder-linux
+        asset_path: ./encoder/encoder-linux
         asset_name: encoder-linux 
         asset_content_type: application/octet-stream
     - name: Upload Release Asset for OSX
@@ -122,7 +122,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./encoder-osx
+        asset_path: ./encoder/encoder-osx
         asset_name: encoder-osx
         asset_content_type: application/octet-stream
   
