@@ -1,12 +1,17 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"math"
 	"sort"
 )
+
+var simpCache = make(map[uint32]uint32)
+
 func simplifyColor(palette []uint32, color uint32) uint32 {
+	if _, ok := simpCache[color]; ok == true {
+		return simpCache[color]
+	}
 	var closestDelta = int64(math.MaxInt64)
 	var pick uint32
 	r, g, b := splitColor(color)
@@ -14,6 +19,7 @@ func simplifyColor(palette []uint32, color uint32) uint32 {
 	for i := 0; i < len(palette); i++ {
 		col := palette[i]
 		if color == col {
+			simpCache[color] = col
 			return col
 		} else {
 			pR, pG, pB := splitColor(col)
@@ -27,23 +33,23 @@ func simplifyColor(palette []uint32, color uint32) uint32 {
 			}
 		}
 	}
+	simpCache[color] = pick
 	return pick
 }
 
 type CAEntry struct {
-	color uint64
+	color   uint64
 	entries int
 }
 
-func encodeFif(w int, h int, src image.Image) []byte {
-	fmt.Println("Simplifying colors of the image...")
+func encodeFif(w int, h int, src image.Image, dontSimplify bool) []byte {
 	mimage := make([][]uint32, w)
 	imask := make([][]bool, w) // Pixels set to false in the imask will no longer be rendered.
 	// Later on when converting to characters, when even 1 character exists
 	// The imask for it is true.
 
 	fif := []byte("FastIF")
-	fif = append(fif, byte(w / 2), byte(h / 4))
+	fif = append(fif, byte(w/2), byte(h/4))
 
 	for x := 0; x < w; x++ {
 		mimage[x] = make([]uint32, h)
@@ -55,8 +61,12 @@ func encodeFif(w int, h int, src image.Image) []byte {
 			b = b / 257
 
 			if a > 8 {
-				zcolor := ((r & 0xFF) << 16) + ((g & 0xFF) << 8) + b & 0xFF
-				mimage[x][y] = simplifyColor(palette, zcolor)
+				zcolor := ((r & 0xFF) << 16) + ((g & 0xFF) << 8) + b&0xFF
+				if dontSimplify == false {
+					mimage[x][y] = simplifyColor(palette, zcolor)
+				} else {
+					mimage[x][y] = zcolor
+				}
 				imask[x][y] = true
 			} else {
 				imask[x][y] = false
@@ -65,39 +75,39 @@ func encodeFif(w int, h int, src image.Image) []byte {
 	}
 
 	// Encode the whole thing as fif segments
-	fifParts := make([][]NonFinalFifSegment, w / 2)
+	fifParts := make([][]NonFinalFifSegment, w/2)
 	for i := 0; i < (w / 2); i++ {
-		fifParts[i] = make([]NonFinalFifSegment, h / 4)
+		fifParts[i] = make([]NonFinalFifSegment, h/4)
 	}
 
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
-			fifParts[x / 2][y / 4].Set(x % 2, y % 4, mimage[x][y])
+			fifParts[x/2][y/4].Set(x%2, y%4, mimage[x][y])
 		}
 	}
 
-//	fmt.Println(fifParts)
+	//	fmt.Println(fifParts)
 
 	// Simplify the fif segments
 	// TODO: This can be multithreaded!
-	sFifParts := make([][]*FifSegment, w / 2)
+	sFifParts := make([][]*FifSegment, w/2)
 	for i := 0; i < (w / 2); i++ {
-		sFifParts[i] = make([]*FifSegment, h / 4)
+		sFifParts[i] = make([]*FifSegment, h/4)
 		for j := 0; j < (h / 4); j++ {
 			sFifParts[i][j] = fifParts[i][j].ToFinalFifSegment()
 		}
 	}
 
-	maskParts := make([][]bool, w / 2)
+	maskParts := make([][]bool, w/2)
 	maskCount := 0
 	for i := 0; i < (w / 2); i++ {
-		maskParts[i] = make([]bool, h / 4)
+		maskParts[i] = make([]bool, h/4)
 
 		for j := 0; j < (h / 4); j++ {
 			maskParts[i][j] = false
 			for x := 0; x < 2; x++ {
 				for y := 0; y < 4; y++ {
-					if imask[( i * 2 ) + x][( j * 4 ) + y] == true {
+					if imask[(i*2)+x][(j*4)+y] == true {
 						maskParts[i][j] = true
 					}
 				}
@@ -155,10 +165,14 @@ func encodeFif(w int, h int, src image.Image) []byte {
 		for y := 0; y < (h / 4); y++ {
 			for x := 0; x < (w / 2); x++ {
 				// First, check if not masked away.
-				if maskParts[x][y] == false {continue}
+				if maskParts[x][y] == false {
+					continue
+				}
 
 				// Compare colors
-				if sFifParts[x][y].bg != bg || sFifParts[x][y].fg != fg {continue}
+				if sFifParts[x][y].bg != bg || sFifParts[x][y].fg != fg {
+					continue
+				}
 
 				if FIF_altMode == false {
 					// Test all 3 cases

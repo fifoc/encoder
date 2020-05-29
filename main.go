@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"image"
 	_ "image/jpeg"
+	"image/png"
 	_ "image/png"
+	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -82,9 +85,67 @@ func main() {
 	fmt.Println("Downsampling video...")
 	os.RemoveAll("tmp/")
 	os.MkdirAll("./tmp/", 0755)
-	cmd := exec.Command("ffmpeg", "-i", os.Args[1], "-vf", "fps=10,scale=320:200", "tmp/out%d.png")
+	cmd := exec.Command("ffmpeg", "-i", os.Args[1], "-vf", "fps=10,scale=320:200", "tmp/out%06d.png")
 	cmd.Run()
 
+	fmt.Println("Calculating diffs...")
+
+	files, _ := ioutil.ReadDir("tmp")
+
+	os.RemoveAll("diffs/")
+	os.MkdirAll("./diffs/", 0755)
+
+	a, _ := ioutil.ReadFile("tmp/out000001.png")
+	fd, _ := os.Create("diffs/out000001.png")
+	fd.Write(a)
+	fd.Close()
+
+	for i := 1; i < len(files); i++ {
+		from, _ := os.Open("tmp/" + files[i-1].Name())
+		to, _ := os.Open("tmp/" + files[i].Name())
+		defer from.Close()
+		defer to.Close()
+		fmt.Println(files[i-1].Name(), "->", files[i].Name())
+
+		fromI, _, _ := image.Decode(from)
+		toI, _, _ := image.Decode(to)
+
+		u := ImageDiff(fromI, toI)
+		fd, _ := os.Create("diffs/" + files[i].Name())
+		png.Encode(fd, u)
+		defer fd.Close()
+	}
+
+	os.RemoveAll("tmpfif")
+	os.Mkdir("tmpfif", 0755)
+
+	for i := 0; i < len(files); i++ {
+		in, _ := os.Open("diffs/" + files[i].Name())
+		defer in.Close()
+
+		inimage, _, _ := image.Decode(in)
+		fifData := encodeFif(320, 200, inimage, false)
+		fd, _ := os.Create("tmpfif/" + files[i].Name() + ".fif")
+		fd.Write(fifData)
+		fd.Close()
+	}
+
+	// Write the MASTERFIF™
+	fif := []byte("FastIF")
+	fif = append(fif, 160, 50)
+
+	for i := 0; i < len(files); i++ {
+		in, _ := ioutil.ReadFile("tmpfif/" + files[i].Name() + ".fif")
+		in = in[8:]
+		in = in[:len(in)-1]
+		fif = append(fif, in...)
+		fif = append(fif, 0x12, 5)
+	}
+
+	fif = append(fif, 0x20)
+	af, _ := os.Create(os.Args[2])
+	af.Write(fif)
+	af.Close()
 	/*
 		a := time.Now()
 		data := encodeFif(w, h, src)
