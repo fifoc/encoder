@@ -95,6 +95,8 @@ jobs:
       with:
         name: encoder-osx   
         path: encoder-osx 
+    - name: Debug Information
+      run: tree
     - name: Upload Release Asset for Windows
       id: upload-release-asset-w
       uses: actions/upload-release-asset@v1
