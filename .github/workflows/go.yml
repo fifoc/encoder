@@ -70,14 +70,18 @@ jobs:
     needs: [ build-l, build-x, build-w ]
     runs-on: ubuntu-latest
     steps:
+    - name: Generate build number
+      uses: einaregilsson/build-number@v2 
+      with:
+        token: ${{secrets.github_token}}  
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
       with:
-        tag_name: ${{ github.sha }}-release
-        release_name: Release for commit ${{ github.sha }}
+        tag_name: ${{ github.sha }}-release-${{ steps.buildnumber.outputs.build_number }}
+        release_name: Release ${{ steps.buildnumber.outputs.build_number }}
         draft: false
         prerelease: false
     - name: Download Artifact for Windows (1/3)
